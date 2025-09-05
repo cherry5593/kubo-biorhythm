@@ -1,292 +1,39 @@
-<!doctype html>
-<html lang="ja">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>空亡バイオリズム簡易アプリ（2025→2036）</title>
-<style>
-  :root{ --good:#eaffea; --void:#fff7c2; --border:#e5e7eb; --muted:#6b7280; }
-  body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Meiryo",system-ui,sans-serif; margin:0; background:#fafafa; color:#111827}
-  .wrap{max-width:980px; margin:28px auto; padding:0 16px}
-  h1{font-size:28px;margin:0 0 16px}
-  h2{font-size:20px;margin:24px 0 12px}
-  .panel{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;margin:12px 0}
-  .row{display:flex; gap:12px; flex-wrap:wrap; align-items:end}
-  label .cap{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
-  input[type="date"], select{border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:16px}
-  .hint{font-size:12px;color:var(--muted)}
-  .chip{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:2px 8px;font-size:12px;margin-right:6px}
-  .cards{display:grid;grid-template-columns:1fr; gap:10px}
-  .card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:12px 14px}
-  .y{font-weight:700; font-size:18px;}
-  .p{font-weight:700; margin-top:2px}
-  .d{font-size:13px;color:#374151; line-height:1.6}
-  .void{background:var(--void)}
-  .good{background:var(--good)}
-  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-  button.btn{border:1px solid var(--border);border-radius:10px;padding:6px 10px;background:#fff;cursor:pointer}
-  .auto-result{font-size:11px;color:#059669;margin-top:4px}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <h1>空亡バイオリズム簡易アプリ（2025→2036）</h1>
-
-  <div class="panel">
-    <div class="row">
-      <label>
-        <span class="cap">生年月日</span>
-        <input id="dob" type="date" />
-        <div id="autoResult" class="auto-result"></div>
-      </label>
-      <label>
-        <span class="cap">空亡（手動選択推奨）</span>
-        <select id="group">
-          <option value="戌亥">戌亥</option>
-          <option value="申酉">申酉</option>
-          <option value="午未">午未</option>
-          <option value="辰巳">辰巳</option>
-          <option value="寅卯">寅卯</option>
-          <option value="子丑">子丑</option>
-        </select>
-      </label>
-      <label>
-        <span class="cap">偶奇（生年の下一桁）</span>
-        <select id="parity">
-          <option value="even">偶数（+陽）</option>
-          <option value="odd">奇数（-陰）</option>
-        </select>
-      </label>
-    </div>
-    <div class="legend">
-      <span class="chip">★＝運気アップ（花咲／再トライ／収穫／晩餐）</span>
-      <span class="chip" style="background:var(--void)">黄色＝空亡年（注意）</span>
-      <span class="chip" style="background:var(--good)">緑＝運気アップ年</span>
-    </div>
-  </div>
-
-  <div class="panel">
-    <h2>空亡の特性</h2>
-    <ul id="traits" style="margin:0 0 4px 18px"></ul>
-  </div>
-
-  <div class="panel">
-    <h2>年ごとのバイオリズム（2025-2036）</h2>
-    <div id="years" class="cards"></div>
-  </div>
-
-  <div class="panel" id="monthlyPanel">
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <h2 style="margin:0">月ごとのバイオリズム（12か月・縦カード）</h2>
-      <button id="editMonthly" class="btn" style="margin-left:auto">文章を編集</button>
-    </div>
-    <div class="hint">※ 資料の文章を"そのまま"表示。必要に応じて「文章を編集」から貼り付け＆保存（ブラウザに保存）。<br>
-    ※ 月の並び：1月=丑月、2月=寅月、3月=卯月、4月=辰月、5月=巳月、6月=午月、7月=未月、8月=申月、9月=酉月、10月=戌月、11月=亥月、12月=子月</div>
-    <div id="months" class="cards" style="margin-top:10px"></div>
-
-    <div id="monthlyEditor" class="panel" style="display:none;margin-top:12px">
-      <div class="hint" style="margin-bottom:8px">対象：<b id="edTarget"></b>（<span id="edTargetParity"></span>） / 1行＝1か月（1月〜12月）。保存するとこのブラウザに記憶されます。</div>
-      <textarea id="edTextarea" rows="12" style="width:100%;font-size:14px;line-height:1.6;border:1px solid var(--border);border-radius:10px;padding:10px;white-space:pre"></textarea>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="btnSaveMonthly" class="btn" style="background:#111827;color:#fff">保存</button>
-        <button id="btnCancelMonthly" class="btn">閉じる</button>
-        <div class="hint">貼り付け例：<code>1月 準備：…\n2月 種まき：…</code></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-const PHASE = {"種まき":"準備完了・出会い/契約・新規スタート","水やり":"方針確定・ご縁/金運/仕事運アップ","間引き":"取捨選択・迷いの整理・決断期","梅雨":"体調/金運の上下・頑張り過ぎに注意","花咲":"注目運・愛情/家庭運・財運も上がる","熱中症":"浮つきやすい・判断ミスに注意","再トライ":"再挑戦/復縁/再始動のチャンス","収穫":"金運上昇・結果が出る","晩餐":"成果享受・豊かさを味わう","冬入り":"停滞感・無理はNG・守りの時","休眠":"充電/学び・本来の自分に立ち返る","準備":"整える・リスタート・縁の切替/新生"};
-const GOOD = new Set(["花咲","再トライ","収穫","晩餐"]);
-
-const YEARLY = {
-  "戌亥":{ even:["熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備","種まき","水やり","間引き","梅雨","花咲"], odd :["熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備","種まき","水やり","間引き","梅雨","花咲"] },
-  "申酉":{ even:["収穫","晩餐","冬入り","休眠","準備","種まき","水やり","間引き","梅雨","花咲","熱中症","再トライ"], odd :["再トライ","収穫","晩餐","冬入り","休眠","準備","種まき","水やり","間引き","梅雨","花咲","熱中症"] },
-  "午未":{ even:["冬入り","休眠","準備","種まき","水やり","間引き","梅雨","花咲","熱中症","再トライ","収穫","晩餐"], odd :["晩餐","冬入り","休眠","準備","種まき","水やり","間引き","梅雨","花咲","熱中症","再トライ","収穫"] },
-  "辰巳":{ even:["準備","種まき","水やり","間引き","梅雨","花咲","熱中症","再トライ","収穫","晩餐","冬入り","休眠"], odd :["休眠","準備","種まき","水やり","間引き","梅雨","花咲","熱中症","再トライ","収穫","晩餐","冬入り"] },
-  "寅卯":{ even:["水やり","間引き","梅雨","花咲","熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備","種まき"], odd :["種まき","水やり","間引き","梅雨","花咲","熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備"] },
-  "子丑":{ even:["梅雨","花咲","熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備","種まき","水やり","間引き"], odd :["間引き","梅雨","花咲","熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備","種まき","水やり"] },
-};
-
-const VOID_YEARS = {"戌亥":[2030,2031],"申酉":[2028,2029],"午未":[2026,2027],"辰巳":[2024,2025],"寅卯":[2034,2035],"子丑":[2032,2033]};
-
-const TRAITS = {
-  "戌亥":["地上が欠ける（現実や生活基盤に不安定さが出やすい）","精神性や哲学的思考が強まり、孤独やスピリチュアルな方向に傾きやすい","感謝を言葉にして人に伝えると運が開け、知恵を共有することで活躍できる","穏やかそうに見えて内面は独自の価値観とカリスマ性。熟考して計画を立ててから行動するタイプ"],
-  "申酉":["西が欠ける（過去や家庭、人間関係の整理がテーマ）","行動力と実行力があり社交的だが、依存すると停滞する","自ら率先して動き、人との縁を調整すると一層開運","社交的で向上心が高く働き者。明るく自己肯定感も高いが仕事優先になりがちで、事業発展で成功しやすい"],
-  "午未":["南が欠ける（未来や子ども、理想の扱いが課題）","若い頃から大人びて責任感が強い。重責を担いやすい","自分の意思で選択し、焦らずに進めると安定","頭の回転が速く臨機応変。プライドが高く衝突しやすい一面も。クールだが内面は繊細"],
-  "辰巳":["天井が欠ける（精神性や信仰心に迷いが出やすい）","合理的なリアリストで感情表現は控えめ、損得勘定に敏感","行動力を信じ、周囲と対話するほど道が開ける","常に刺激を求めマンネリを嫌うが、計画性も兼ね備える"],
-  "寅卯":["東が欠ける（社会/仕事、母性的役割と向き合う課題）","推進力が強く前向き。一方で突っ走りやすい","自他の未来を信じ、環境を整えて前進すると安定","一途で行動力大。目上に可愛がられ30代から上昇"],
-  "子丑":["北が欠ける（父親・上司・権威との関係が課題になりやすい）","独立独歩の実務家で決断力が高い","人に頼らず自立を第一目標にすると信頼と成功を得やすい","誠実で常識的、争いを好まず努力家。若年期は親や上司の運に恵まれにくいが、早い独立で成功しやすく晩年運は上昇"],
-};
-
-const MONTHLY_TEXT_KEY='kubo_monthly_text_v1';
-function loadMonthlyText(){ try{ return JSON.parse(localStorage.getItem(MONTHLY_TEXT_KEY)||'{}'); }catch(e){ return {}; } }
-function saveMonthlyText(obj){ localStorage.setItem(MONTHLY_TEXT_KEY, JSON.stringify(obj)); }
-let MONTHLY_TEXT = loadMonthlyText();
-
-const MONTHLY_PHASES = {
-  "戌亥": { 
-    even: ["熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備","種まき","水やり","間引き","梅雨","花咲"], 
-    odd: ["熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備","種まき","水やり","間引き","梅雨","花咲"] 
-  },
-  "申酉": { 
-    even: ["梅雨","花咲","熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備","種まき","水やり","間引き"], 
-    odd: ["間引き","梅雨","花咲","熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備","種まき","水やり"] 
-  },
-  "午未": { 
-    even: ["熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備","種まき","水やり","間引き","梅雨","花咲"], 
-    odd: ["花咲","熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備","種まき","水やり","間引き","梅雨"] 
-  },
-  "辰巳": { 
-    even: ["梅雨","花咲","熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備","種まき","水やり","間引き"], 
-    odd: ["間引き","梅雨","花咲","熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備","種まき","水やり"] 
-  },
-  "寅卯": { 
-    even: ["種まき","水やり","間引き","梅雨","花咲","熱中症","再トライ","収穫","晩餐","冬入り","休眠","準備"], 
-    odd: ["準備","種まき","水やり","間引き","梅雨","花咲","熱中症","再トライ","収穫","晩餐","冬入り","休眠"] 
-  },
-  "子丑": { 
-    even: ["休眠","準備","種まき","水やり","間引き","梅雨","花咲","熱中症","再トライ","収穫","晩餐","冬入り"], 
-    odd: ["冬入り","休眠","準備","種まき","水やり","間引き","梅雨","花咲","熱中症","再トライ","収穫","晩餐"] 
-  },
-};
-
-function calculateTenchusatsu(year, month, day) {
-  const refYear = 1999, refMonth = 5, refDay = 5;
-  const refTenchusatsu = '子丑';
-  const refParity = 'odd';
-  
-  const refDate = new Date(refYear, refMonth - 1, refDay);
-  const targetDate = new Date(year, month - 1, day);
-  const daysDiff = Math.floor((targetDate - refDate) / (1000 * 60 * 60 * 24));
-  
-  const cycleDiff = Math.floor(daysDiff / 10) % 6;
-  
-  const tenchusatsuOrder = ['子丑', '寅卯', '辰巳', '午未', '申酉', '戌亥'];
-  const refIndex = tenchusatsuOrder.indexOf(refTenchusatsu);
-  const newIndex = (refIndex + cycleDiff) % 6;
-  const newTenchusatsu = tenchusatsuOrder[newIndex];
-  
-  const parity = (year % 10) % 2 === 0 ? 'even' : 'odd';
-  
-  return { tenchusatsu: newTenchusatsu, parity };
-}
-
-const $group = document.getElementById('group');
-const $parity = document.getElementById('parity');
-const $traits = document.getElementById('traits');
-const $years = document.getElementById('years');
-const $months = document.getElementById('months');
-const $editBtn = document.getElementById('editMonthly');
-const $editor = document.getElementById('monthlyEditor');
-const $edTarget = document.getElementById('edTarget');
-const $edTargetParity = document.getElementById('edTargetParity');
-const $edTextarea = document.getElementById('edTextarea');
-const $btnSaveMonthly = document.getElementById('btnSaveMonthly');
-const $btnCancelMonthly = document.getElementById('btnCancelMonthly');
-
-function render(){
-  const group = $group.value;
-  const parity = $parity.value;
-
-  $traits.innerHTML='';
-  (TRAITS[group]||[]).forEach(t=>{
-    const li=document.createElement('li');
-    li.textContent=t;
-    $traits.appendChild(li);
-  });
-
-  const seq = YEARLY[group][parity];
-  const years = Array.from({length:12},(_,i)=>2025+i);
-  $years.innerHTML='';
-  years.forEach((y,i)=>{
-    const p=seq[i];
-    const card=document.createElement('div');
-    card.className='card';
-    const isVoid=(VOID_YEARS[group]||[]).includes(y);
-    const isGood=GOOD.has(p);
-    if(isVoid) card.classList.add('void');
-    if(isGood) card.classList.add('good');
-    card.innerHTML=`<div class="y">${y}${isGood?' ★':''}${isVoid?'（空亡）':''}</div><div class="p">${p}</div><div class="d">${PHASE[p]||''}</div>`;
-    $years.appendChild(card);
-  });
-
-  const key = `${group}_${parity}`;
-  const lines = (MONTHLY_TEXT[key]||'').trim().split(/\n/).filter(Boolean);
-  const phases = MONTHLY_PHASES[group][parity];
-  $months.innerHTML='';
-  for(let i=0;i<12;i++){
-    const card=document.createElement('div');
-    card.className='card';
-    const head = `${i+1}月`;
-    let line = lines[i]||'';
-    const phase = phases[i];
-    const isGood=GOOD.has(phase);
-    if(isGood) card.classList.add('good');
-    card.innerHTML = `<div class="y">${head}${isGood?' ★':''}</div>`+
-                     `<div class="p">${phase}</div>`+
-                     `<div class="d">${line ? line : (PHASE[phase]||'')}</div>`;
-    $months.appendChild(card);
-  }
-}
-
-function openEditor(){
-  const group=$group.value;
-  const parity=$parity.value;
-  const key=`${group}_${parity}`;
-  $edTarget.textContent=group;
-  $edTargetParity.textContent=(parity==='even'?'偶数年生まれ':'奇数年生まれ');
-  const lines=(MONTHLY_TEXT[key]||'').trim();
-  if(lines){
-    $edTextarea.value=lines;
-  } else {
-    const phases = MONTHLY_PHASES[group][parity];
-    $edTextarea.value = phases.map((ph,i)=>`${i+1}月 ${ph}：`).join('\n');
-  }
-  $editor.style.display='block';
-}
-
-function closeEditor(){
-  $editor.style.display='none';
-}
-
-function saveEditor(){
-  const group=$group.value;
-  const parity=$parity.value;
-  const key=`${group}_${parity}`;
-  MONTHLY_TEXT[key]=$edTextarea.value;
-  saveMonthlyText(MONTHLY_TEXT);
-  closeEditor();
-  render();
-}
-
-$group.addEventListener('change', render);
-$parity.addEventListener('change', render);
-$editBtn.addEventListener('click', openEditor);
-$btnCancelMonthly.addEventListener('click', closeEditor);
-$btnSaveMonthly.addEventListener('click', saveEditor);
-
-const $dob=document.getElementById('dob');
-$dob.addEventListener('change',()=>{ 
-  const date = new Date($dob.value);
-  const y = date.getFullYear();
-  const m = date.getMonth() + 1;
-  const d = date.getDate();
-  
-  if(Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)){ 
-    const result = calculateTenchusatsu(y, m, d);
-    
-    $group.value = result.tenchusatsu;
-    $parity.value = result.parity;
-    
-    render();
-    
-    console.log(`${y}/${m}/${d} → ${result.tenchusatsu}空亡・${result.parity === 'even' ? '偶数' : '奇数'}年生まれ`);
-  } 
-});
-
-render();
-</script>
-</body>
-</ht
+function getMonthlyBiorhythm(kuboType) {
+            const monthlyData = [];
+            const startYear = 2025;
+            const endYear = 2036;
+            
+            // 空亡タイプごとの月の設定（安全な処理）
+            const kuboMonths = {
+                '子丑': { odd: [1, 3, 5, 7, 9, 11], even: [2, 4, 6, 8, 10, 12] },
+                '寅卯': { odd: [2, 4, 6, 8, 10, 12], even: [1, 3, 5, 7, 9, 11] },
+                '辰巳': { odd: [1, 3, 5, 7, 9, 11], even: [2, 4, 6, 8, 10, 12] },
+                '午未': { odd: [2, 4, 6, 8, 10, 12], even: [1, 3, 5, 7, 9, 11] },
+                '申酉': { odd: [1, 3, 5, 7, 9, 11], even: [2, 4, 6, 8, 10, 12] },
+                '戌亥': { odd: [2, 4, 6, 8, 10, 12], even: [1, 3, 5, 7, 9, 11] }
+            };
+            
+            // 空亡タイプのデータが存在しない場合のデフォルト値
+            const monthSettings = kuboMonths[kuboType] || { odd: [], even: [] };
+            
+            for (let year = startYear; year <= endYear; year++) {
+                const yearData = {
+                    year: year,
+                    months: []
+                };
+                
+                const isOddYear = year % 2 === 1;
+                const goodMonths = isOddYear ? monthSettings.odd : monthSettings.even;
+                
+                for (let month = 1; month <= 12; month++) {
+                    yearData.months.push({
+                        month: month,
+                        isGood: goodMonths.includes(month)
+                    });
+                }
+                
+                monthlyData.push(yearData);
+            }
+            
+            return monthlyData;
+        }
